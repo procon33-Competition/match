@@ -1,3 +1,4 @@
+from unicodedata import name
 import modules
 import os
 import pickle
@@ -8,13 +9,17 @@ import sys
 def all2hash(dirpath):
     hashlist=[]
     for filename in os.listdir(dirpath):
-        hash=modules.path2hash(filename)
-        hashlist.append(hash)
-    return hashlist
+        base,ext= os.path.splitext(filename)
+        namelist=[]
+        if ext=='.wav':
+            hash=modules.path2hash(dirpath+filename)
+            hashlist.append(hash)
+            namelist.append(base)
+    return hashlist,namelist
 
-def savehashlist(hashlist):
-    with open('problem_db.pkl','wb') as p:
-        pickle.dump(hashlist,p)
+def savelist(listname,name):
+    with open(name,'wb') as p:
+        pickle.dump(listname,p)
 
 def checkargs(args):
     if args!=1:
@@ -29,4 +34,6 @@ def checkargs(args):
 if __name__=="__main__":
     args=sys.srgv
     checkargs(args)
-    savehashlist(all2hash(args))
+    hashlist,namelist=all2hash(args)
+    savelist(hashlist)
+    savelist(namelist)

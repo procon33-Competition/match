@@ -9,7 +9,6 @@ import librosa
 import math
 import pywt
 import librosa
-import cv2
 import glob
 import time
 import pickle
@@ -299,22 +298,51 @@ def path2hash(path,graph=False):
   return hashmarks
 
 
-def hashmatching(hash1,hash2):
+def hashmatching(hash1,hash2,graph=False):
   i=0
   ts1=[]
   ts2=[]
+  cnt=0
+  tmp=[]
   for h in hash2.keys():
     if h in hash1:
       t1,t2=hash1[h],hash2[h]
       ts1.append(t1)
       ts2.append(t2)
+      tmp.append([t1,t2])
       i+=1
-    
-  if i>0:
+
+  diffs={}
+  forgraph=[]
+  for j in range(len(tmp)):
+    t1,t2=tmp[j]
+    diff=abs(t2-t1)
+    diff=round(diff, 1)
+    forgraph.append(diff)
+    try:
+      diffs[diff]+=1
+    except KeyError:
+      diffs[diff]=1
+
+  diffs_sorted=sorted(diffs.items(),key=lambda x:x[1],reverse=True)  
+
+  #print(i)
+  if False==True and i>0:
     plt.scatter(ts1,ts2,c="pink",s=5)
     his=list(map(lambda x,y:x-y,ts1,ts2))
-    #plt.hist(his)
     plt.grid(True)
     plt.show()
+    plt.close()
+    plt.hist(his,density=True,bins=30)
+    plt.show()
+    plt.close()
+    plt.hist(forgraph,density=False,bins=30)
+    plt.show()
+    plt.close() 
 
-  print(f'一致={ts1}')
+  #print(f'一致={ts1}')
+  #print(cnt)
+  #print(len(tmp))
+  #print(cnt/(len(tmp)*len(tmp)))
+  #print(diffs_sorted)
+  return diffs_sorted[0][1]
