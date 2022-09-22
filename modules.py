@@ -40,7 +40,7 @@ def path2sgram(path):
 
   # 振幅に変換
   amp = np.abs(spec_db)
-  print(amp.shape)  # --> (8001, 1)
+  #print(amp.shape)  # --> (8001, 1)
 
   # 正規化
   N = len(wave)  # データ数
@@ -146,11 +146,11 @@ def findpeaks(dx, y, n, w):
     return index, peaks
 
 # スペクトログラムからピークを検出する関数
-    # fft_array=スペクトログラム（転置前）
-    # dt, df=スペクトログラムの時間分解能, 周波数分解能
-    # num_peaks=1つの周波数軸で検出するピーク数
-    # w=ノイズ対策用の幅（order）
-    # max_peaks=最終的にスペクトログラムから抽出するピーク数（振幅の大きい順）
+# fft_array=スペクトログラム（転置前）
+# dt, df=スペクトログラムの時間分解能, 周波数分解能
+# num_peaks=1つの周波数軸で検出するピーク数
+# w=ノイズ対策用の幅（order）
+# max_peaks=最終的にスペクトログラムから抽出するピーク数（振幅の大きい順）
 def findpeaks_2d(fft_array, dt, df, num_peaks, w, max_peaks):
 
     # ピーク情報を初期化する
