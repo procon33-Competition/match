@@ -8,14 +8,19 @@ import sys
 
 def all2hash(dirpath):
     hashlist=[]
+    namelist=[]
+    lists=[]
     for filename in os.listdir(dirpath):
         base,ext= os.path.splitext(filename)
-        namelist=[]
+        path=f"{dirpath}/{filename}"
         if ext=='.wav':
-            hash=modules.path2hash(dirpath+filename)
+            spec,fs=modules.path2sgram(path)
+            x,y=modules.sgram2peaks(spec,amp_min=50,plot=False)
+            hash,pairs=modules.peaks2hash(x,y)
             hashlist.append(hash)
             namelist.append(base)
-    return hashlist,namelist
+            lists.append([hash,base])
+    return lists
 
 def savelist(listname,name):
     with open(name,'wb') as p:
@@ -32,8 +37,7 @@ def checkargs(args):
     
 
 if __name__=="__main__":
-    args=sys.srgv
-    checkargs(args)
-    hashlist,namelist=all2hash(args)
-    savelist(hashlist)
-    savelist(namelist)
+    lists=all2hash("./data/JKspeech-v_1_0/JKspeech/E")
+    savelist(lists,"db/E/lists_db.pkl")
+    lists=all2hash("./data/JKspeech-v_1_0/JKspeech/J")
+    savelist(lists,"db/J/lists_db.pkl")

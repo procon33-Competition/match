@@ -9,19 +9,49 @@ def load_pkl(path):
         l = pickle.load(p)
     return l
 
-def match_db(audio_path,db_path="problem_db.pkl"):
-    audio_hash=modules.path2hash(audio_path)
-    problem_db=load_pkl(db_path)
-    ans=[]
-    i=0
-    for problem_hash in problem_db:
-        tmp=modules.hashmatching(audio_hash,problem_hash)
-        ans.append([i,tmp])
-        i+=1
-    return ans
+def match_db(audio_path,num,english=True):
+    '''
+    Matching the audio to the database
+    
+    Args:
+        audio_path (str): path to the audio file
+        num (int): number of audio files to match
+        name_path (str): path to the name file
+        db_path (str): path to the database file
+    
+    '''
+
+    
+    spec,fs=modules.path2sgram(audio_path)
+    x,y=modules.sgram2peaks(spec,amp_min=50,plot=False)
+    audio_hash,pairs=modules.peaks2hash(x,y)
+    
+    
+    tmp=dict()
+    if english==True:
+        lists=load_pkl("db/E/lists_db.pkl")
+
+        for problem,name in lists:
+            hoge=modules.hashmatching(audio_hash,problem)
+            tmp[name]=hoge
+
+
+    if english==False:
+        lists=load_pkl("db/J/lists_db.pkl")
+       
+        for problem,name in lists:
+            hoge=modules.hashmatching(audio_hash,problem)
+            tmp[name]=hoge
+
+    tmp=sorted(tmp.items(),key=lambda x:x[1],reverse=True)
+    
+    
+    
+    # for i in range(num):
+    #     print(tmp[i])
+    # return ans
+    print(tmp[:num])
 
 if __name__=="__main__":
-    args=sys.argv
-    ans=match_db(args)
-    ans=sorted(ans,key=lambda x:x[1],reverse=True)
-    print(ans)
+    # match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_E01/problem1.wav",3)
+    match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_J04/problem1.wav",5,False)
