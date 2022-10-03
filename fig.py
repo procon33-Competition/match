@@ -60,5 +60,6 @@ def save_all_fig(dir_path):
 
             plt.savefig(f"./imgs/melspec/{filename}.png")
 
+
 if __name__=="__main__":
     save_all_fig("./data/JKspeech-v_1_0/JKspeech")

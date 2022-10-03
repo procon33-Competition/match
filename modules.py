@@ -390,6 +390,14 @@ def path2hash(path,graph=False):
 
 
 def hashmatching(hash1,hash2,graph=False):
+  """
+  Hash matching
+  :param hash1:
+  :param hash2:
+  :param graph:
+  :return:
+  return 一番高いやつからそれ以外の平均, 割合(低い方がいい)
+  """
   i=0
   ts1=[]
   ts2=[]
@@ -436,14 +444,23 @@ def hashmatching(hash1,hash2,graph=False):
     plt.hist(forgraph,density=False,bins=30)
     plt.savefig("./tmp/hist2.png")
     plt.show()
-    plt.close() 
+    plt.close()
 
   #print(f'一致={ts1}')
   #print(cnt)
   #print(len(tmp))
   #print(diffs_sorted)
   #print(f"数は{diffs_sorted}  iは{i}")
-  return n[-1]
+  # print(type(n))
+  first=n[-1]
+  # print(f"first={first}   n==={n}")
+  n=np.delete(n,-1)
+  # print(f"first={first}   n==={n}")
+  n_sum=np.sum(n)
+  n_ave=n_sum/len(n)
+  #print(type(n_ave))
+  # print(n_ave)
+  return float(first-n_ave),n[-1]/first
 
 def img2peaks(path,min_distance=2):
   '''
@@ -481,3 +498,51 @@ def path2cqt2sgram(path,hop_length=1024,n_octave=7,bins_per_octave=32,window='ha
                 )
   c=abs(c)
   return c
+
+
+def hashmatching_img(hash1,hash2,name):
+  i=0
+  ts1=[]
+  ts2=[]
+  cnt=0
+  tmp=[]
+  for h in hash2.keys():
+    if h in hash1:
+      t1,t2=hash1[h],hash2[h]
+      #print(f"t1,t2={t1},{t2}")
+      ts1.append(t1)
+      ts2.append(t2)
+      tmp.append([t1,t2])
+      i+=1
+
+  diffs={}
+  forgraph=[]
+  for j in range(len(tmp)):
+    t1,t2=tmp[j]
+    diff=abs(t2-t1)
+    diff=round(diff, 1)
+    # print(f"{diff}")
+    forgraph.append(diff)
+    try:
+      diffs[diff]+=1
+    except KeyError:
+      diffs[diff]=1
+  #print(f"tmpは{tmp}")
+  diffs_sorted=sorted(diffs.items(),key=lambda x:x[1],reverse=True)  
+  n,bins,patches=plt.hist(forgraph,density=True,bins=30)
+  plt.close()
+  n.sort()
+
+  plt.scatter(ts1,ts2,c="pink",s=5)
+  his=list(map(lambda x,y:x-y,ts1,ts2))
+  plt.grid(True)
+  plt.close()
+  plt.hist(his,density=True,bins=30)
+  plt.savefig(f"./tmp/ans/hist_{name}.png")
+  plt.close()
+
+  # first=n[-1]
+  # n=np.delete(n,-1)
+  # n_sum=np.sum(n)
+  # n_ave=n_sum/len(n)
+  # return float(first-n_ave)
