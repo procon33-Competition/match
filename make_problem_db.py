@@ -15,7 +15,7 @@ def all2hash(dirpath):
         path=f"{dirpath}/{filename}"
         if ext=='.wav':
             spec,fs=modules.path2sgram(path)
-            x,y=modules.sgram2peaks(spec,amp_min=50,plot=False)
+            x,y=modules.sgram2peaks(spec,amp_min=40,plot=False,PEAK_NEIGHBORHOOD_SIZE=8)
             hash,pairs=modules.peaks2hash(x,y)
             hashlist.append(hash)
             namelist.append(base)
@@ -34,10 +34,7 @@ def checkargs(args):
         print("pls only path dir")
         sys.exit()
 
-    
-
 if __name__=="__main__":
-    lists=all2hash("./data/JKspeech-v_1_0/JKspeech/E")
-    savelist(lists,"db/E/lists_db.pkl")
-    lists=all2hash("./data/JKspeech-v_1_0/JKspeech/J")
-    savelist(lists,"db/J/lists_db.pkl")
+    lists=all2hash("./data/JKspeech-v_1_0/JKspeech")
+    savelist(lists,"db/lists_db.pkl")
+    print("finished")

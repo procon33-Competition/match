@@ -13,6 +13,7 @@ import glob
 import time
 import pickle
 import hashlib
+import pandas as pd
 import cv2
 import skimage
 
@@ -33,6 +34,8 @@ from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import (binary_erosion,
                                       generate_binary_structure,
                                       iterate_structure)
+  
+import sklearn
 
 
 from collections import Counter
@@ -52,14 +55,14 @@ def wav_read(path):
   return wave,fs
 
 
-def wav2sgram(path,n_fft=512,win_length=512):
+def wav2sgram(path,n_fft=1024,win_length=1024):
   wave,fs=wav_read(path)
-  sgram=np.abs(librosa.stft(wave,n_fft,win_length))
+  sgram=librosa.feature.melspectrogram(y=wave,sr=fs,n_fft=n_fft,win_length=win_length)
   return sgram,wave,fs
 
 def path2sgram(path):
   sgram,wave,fs=wav2sgram(path)
-  spec_db=librosa.amplitude_to_db(sgram,ref=0)
+  spec_db=librosa.power_to_db(sgram,ref=0)
 
   # 振幅に変換
   amp = np.abs(spec_db)
@@ -297,15 +300,27 @@ def pairling_peaks(freq_index,time_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
       df=f2-f1
       if not mintdt<=dt and dt<=maxtdt and minfdt<=df and df<=maxfdt:
         continue
-      landmarks.append([f1,f2,dt,t1])
+
+      for m in range(fanvalue):
+        tmp=i+m
+        if tmp>=ntimes:
+          break
+        #print(tmp)
+        t3,f3=time_index[tmp],freq_index[tmp]
+        dtt=t3-t1
+        dff=f3-f1
+        if not mintdt<=dtt and dtt<=maxtdt and minfdt<=dff and dff<=maxfdt:
+          continue
+
+        landmarks.append([round(f1,1),round(f2,1),round(f3,1),round(dt,1),round(dtt,1),round(t1,1)])
   
   return landmarks
 
 def peaks2hash(freq_index,time_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
   hash_marks={}
   pairs=pairling_peaks(freq_index,time_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
-  for f1,f2,dt,t1 in pairs:
-    info=f'{f1}{f2}{dt}'
+  for f1,f2,f3,dt,dtt,t1 in pairs:
+    info=f'{f1}{f2}{f3}{dt}{dtt}'
     hash=hashlib.sha224(info.encode()).hexdigest()
     hash_marks[hash]=t1
   return hash_marks,pairs
@@ -367,10 +382,10 @@ def path2hash(path,graph=False):
       ax1.scatter(time_index[i], freq_index[i], s=5, facecolor='None', linewidth=3, edgecolors='white')
 
     for tmp in pairs:
-      f1,f2,dt,t1=tmp
+      f1,f2,f3,dt,t1=tmp
       #print(f'{f1}ti iiiiii {t1},,,,,,,{f2}:::::{t1+dt}')
       ax1.plot([t1,t1+dt],[f1,f2],color="white")
-      ax1.hist(dt,bins=20)
+      ax1.hist(dt,bins=30)
 
     # 軸設定する。
     ax1.set_xlabel('Time [s]')
@@ -426,13 +441,24 @@ def hashmatching(hash1,hash2,graph=False):
       diffs[diff]=1
   #print(f"tmpは{tmp}")
   diffs_sorted=sorted(diffs.items(),key=lambda x:x[1],reverse=True)  
-  n,bins,patches=plt.hist(forgraph,density=True,bins=30)
+  n,bins,patches=plt.hist(forgraph,density=False,bins=30)
   plt.close()
   n.sort()
 
   if graph==True and i>0:
     print("hogeghoegh")
-    plt.scatter(ts1,ts2,c="pink",s=5)
+    from sklearn.linear_model import LinearRegression
+    plt.scatter(ts1,ts2,c="red",s=5)
+
+    mod=LinearRegression()
+    df_x=pd.DataFrame(ts1)
+    df_y=pd.DataFrame(ts2)
+
+    mod_lin=mod.fit(df_x,df_y)
+    y_lin_fit=mod_lin.predict(df_x)
+    r2_lin=mod.score(df_x,df_y)
+    plt.plot(df_x,y_lin_fit,c="red",linewidth=0.5)
+
     his=list(map(lambda x,y:x-y,ts1,ts2))
     plt.grid(True)
     plt.show()
@@ -458,9 +484,9 @@ def hashmatching(hash1,hash2,graph=False):
   # print(f"first={first}   n==={n}")
   n_sum=np.sum(n)
   n_ave=n_sum/len(n)
-  #print(type(n_ave))
-  # print(n_ave)
-  return float(first-n_ave),n[-1]/first
+  n_=n-n_ave
+
+  return float(first-(n_[-1]-n_ave)),n[-1]/first
 
 def img2peaks(path,min_distance=2):
   '''
@@ -528,16 +554,17 @@ def hashmatching_img(hash1,hash2,name):
     except KeyError:
       diffs[diff]=1
   #print(f"tmpは{tmp}")
-  diffs_sorted=sorted(diffs.items(),key=lambda x:x[1],reverse=True)  
+  diffs_sorted=sorted(diffs.items(),key=lambda x:x[1],reverse=True)
   n,bins,patches=plt.hist(forgraph,density=True,bins=30)
   plt.close()
   n.sort()
 
-  plt.scatter(ts1,ts2,c="pink",s=5)
+  plt.scatter(ts1,ts2,c="red",s=5)
   his=list(map(lambda x,y:x-y,ts1,ts2))
   plt.grid(True)
+  plt.savefig(f"./tmp/ans/hist{name}_.png")
   plt.close()
-  plt.hist(his,density=True,bins=30)
+  plt.hist(his,density=False,bins=30)
   plt.savefig(f"./tmp/ans/hist_{name}.png")
   plt.close()
 
