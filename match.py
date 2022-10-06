@@ -56,8 +56,12 @@ def match_db(audio_path,num,graph=False,scatter=False):
     key_s=tmp[:num]
     for key,_ in key_s:
         modules.hashmatching_img(audio_hash,saga[key],key)
-    audio_path=audio_path.split("\\")
-    # audio_path=audio_path.split("/")
+
+    #単体のときは/
+    #複数のやつのときは\\
+
+    # audio_path=audio_path.split("\\")
+    audio_path=audio_path.split("/")
 
     audio_path=f"{audio_path[-2]}_{audio_path[-1]}"
     if scatter==True:
@@ -74,9 +78,10 @@ def match_db(audio_path,num,graph=False,scatter=False):
     print(f"{audio_path}==={tmp[:num]}")
 
 if __name__=="__main__":
-    match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_J04/problem1.wav",10,graph=False)
+    match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_J04/problem1.wav",20,graph=False)
     
     # files=glob.glob("data\sample_Q_202205\sample_Q_202205\*\*.wav")
+
     # for file in files:
     #     #print(file)
     #     match_db(file,5,False,True)

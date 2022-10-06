@@ -307,20 +307,29 @@ def pairling_peaks(freq_index,time_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
           break
         #print(tmp)
         t3,f3=time_index[tmp],freq_index[tmp]
-        dtt=t3-t1
-        dff=f3-f1
+        dtt=t3-t2
+        dff=f3-f2
         if not mintdt<=dtt and dtt<=maxtdt and minfdt<=dff and dff<=maxfdt:
           continue
-
-        landmarks.append([round(f1,1),round(f2,1),round(f3,1),round(dt,1),round(dtt,1),round(t1,1)])
+        for p in range(fanvalue):
+          tmp=i+p+m
+          if tmp>=ntimes:
+            break
+          #print(tmp)
+          t4,f4=time_index[tmp],freq_index[tmp]
+          dttt=t4-t3
+          dfff=f4-f3
+          if not mintdt<=dttt and dttt<=maxtdt and minfdt<=dfff and dfff<=maxfdt:
+            continue
+          landmarks.append([round(f1,1),round(f2,1),round(f3,1),round(f4,1),round(dt,1),round(dtt,1),round(dttt,1),round(t1,1)])
   
   return landmarks
 
 def peaks2hash(freq_index,time_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
   hash_marks={}
   pairs=pairling_peaks(freq_index,time_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
-  for f1,f2,f3,dt,dtt,t1 in pairs:
-    info=f'{f1}{f2}{f3}{dt}{dtt}'
+  for f1,f2,f3,f4,dt,dtt,dttt,t1 in pairs:
+    info=f'{f1}{f2}{f3}{f4}{dt}{dtt}{dttt}'
     hash=hashlib.sha224(info.encode()).hexdigest()
     hash_marks[hash]=t1
   return hash_marks,pairs
@@ -509,19 +518,20 @@ def img2peaks(path,min_distance=2):
   return x,y
 
 
-def path2cqt2sgram(path,hop_length=1024,n_octave=7,bins_per_octave=32,window='hann',fmin=librosa.note_to_hz('C1')):
+def path2cqt2sgram(path,hop_length=1024,n_octave=8,bins_per_octave=32,window='hann',fmin=librosa.note_to_hz('C1')):
   '''
   画像を特徴点取ってペアにしてハッシュにする関数
   メモ:sgram2peaksのamp_min=1
   '''
   wav,fs=wav_read(path)
-  c=librosa.cqt(wav,sr=fs,
+  c=librosa.vqt(wav,sr=fs,
                 hop_length=hop_length,
                 n_bins=n_octave*bins_per_octave,
                 bins_per_octave=bins_per_octave,
                 window=window,
                 fmin=fmin
                 )
+  c=librosa.amplitude_to_db(c, ref=0)
   c=abs(c)
   return c
 
@@ -573,3 +583,28 @@ def hashmatching_img(hash1,hash2,name):
   # n_sum=np.sum(n)
   # n_ave=n_sum/len(n)
   # return float(first-n_ave)
+
+def path2mfcc(path,n_mfcc=10,dct_type=3,hop_length=1024,window='hann',f_min=librosa.note_to_hz('C1')):
+  # 使わない
+
+
+  y, fs = wav_read(path)
+
+  # 振幅スペクトログラムを算出
+  D = np.abs(librosa.stft(y))
+  D_dB = librosa.amplitude_to_db(D, ref=np.max)
+
+  # メルスペクトログラムを算出
+  S = librosa.feature.melspectrogram(S=D, sr=fs)
+  S_dB = librosa.amplitude_to_db(S, ref=0)
+
+  # MFCCを算出
+  # mfcc = librosa.feature.mfcc(S=S_dB,
+  #                             n_mfcc=n_mfcc,
+  #                             dct_type=dct_type,
+  #                             hop_length=hop_length,
+  #                             window=window,
+  #                             f_min=f_min
+  #                             )
+  mfcc=librosa.feature.mfcc(y=y,sr=fs,n_mfcc=n_mfcc,dct_type=dct_type,)
+  return mfcc
