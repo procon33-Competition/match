@@ -1,53 +1,34 @@
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import scipy
-import scipy.signal
-import scipy.ndimage as ndi
-import soundfile as sf
-import librosa
-import math
-import pywt
-import librosa
 import glob
-import time
+import hashlib
+import math
 import pickle
-import hashlib
-import pandas as pd
-import cv2
-import skimage
-
-import librosa.display
-import scipy.ndimage as ndi
-
-from scipy.signal.windows.windows import nuttall
-import scipy.signal
-
-import hashlib
+import time
+from collections import Counter
 from operator import itemgetter
 from typing import List, Tuple
 
+import cv2
+import librosa
+import librosa.display
+import matplotlib
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import pywt
+import scipy
+import scipy.ndimage as ndi
+import scipy.signal
+import skimage
+import sklearn
+import soundfile as sf
+from matplotlib import pyplot as plt
+from scipy import fftpack, signal
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import (binary_erosion,
                                       generate_binary_structure,
                                       iterate_structure)
-  
-import sklearn
-
-
-from collections import Counter
-
-
-from scipy import signal
-from scipy import fftpack
-import soundfile as sf
-from matplotlib import pyplot as plt
-from scipy.ndimage.filters import maximum_filter
-
-
+from scipy.signal.windows.windows import nuttall
 
 
 def wav_read(path):
@@ -155,6 +136,10 @@ def sgram2peaks(arr2D,amp_min=10,CONNECTIVITY_MASK=2,PEAK_NEIGHBORHOOD_SIZE=10,p
     :param amp_min: minimum amplitude in spectrogram in order to be considered a peak.
     :return: a list composed by a list of frequencies and times.
     """
+    
+    # FROM  https://github.com/worldveil/dejavu
+    
+    
     # Original code from the repo is using a morphology mask that does not consider diagonal elements
     # as neighbors (basically a diamond figure) and then applies a dilation over it, so what I'm proposing
     # is to change from the current diamond figure to a just a normal square one:
@@ -237,53 +222,86 @@ def findpeaks(dx, y, n, w):
     peaks = np.array(peaks)
     return index, peaks
 
-# スペクトログラムからピークを検出する関数
-# fft_array=スペクトログラム（転置前）
-# dt, df=スペクトログラムの時間分解能, 周波数分解能
-# num_peaks=1つの周波数軸で検出するピーク数
-# w=ノイズ対策用の幅（order）
-# max_peaks=最終的にスペクトログラムから抽出するピーク数（振幅の大きい順）
+
 def findpeaks_2d(fft_array, dt, df, num_peaks, w, max_peaks):
+  """スペクトログラムからピークを検出する関数
+  
+  Parameters
+  ----------
+  fft_array : _type_
+      スペクトログラム（転置前）
+  dt : _type_
+      スペクトログラムの時間分解能
+  df : _type_
+      スペクトログラムの周波数分解能
+  num_peaks : _type_
+      1つの周波数軸で検出するピーク数
+  w : _type_
+      ノイズ対策用の幅（order）
+  max_peaks : _type_
+      最終的にスペクトログラムから抽出するピーク数（振幅の大きい順）
 
-    # ピーク情報を初期化する
-    time_index = np.zeros((len(fft_array), num_peaks))
-    freq_index = np.zeros((len(fft_array), num_peaks))
-    freq_peaks = np.zeros((len(fft_array), num_peaks))
+  Returns
+  -------
+  _type_
+      _description_
+  """
+  
+  # ピーク情報を初期化する
+  time_index = np.zeros((len(fft_array), num_peaks))
+  freq_index = np.zeros((len(fft_array), num_peaks))
+  freq_peaks = np.zeros((len(fft_array), num_peaks))
 
-    # 各周波数軸毎にピークを検出する
-    for i in range(len(fft_array)):
-        index, peaks = findpeaks(df, fft_array[i], n=num_peaks, w=w)    # ピーク検出
-        freq_peaks[i] = peaks                                           # 検出したピーク値(振幅)を格納
-        freq_index[i] = index                                           # 検出したピーク位置(周波数)を格納
-        time_index[i] = np.full(num_peaks, i) * dt                      # 検出したピーク位置(時間)を格納
+  # 各周波数軸毎にピークを検出する
+  for i in range(len(fft_array)):
+      index, peaks = findpeaks(df, fft_array[i], n=num_peaks, w=w)    # ピーク検出
+      freq_peaks[i] = peaks                                           # 検出したピーク値(振幅)を格納
+      freq_index[i] = index                                           # 検出したピーク位置(周波数)を格納
+      time_index[i] = np.full(num_peaks, i) * dt                      # 検出したピーク位置(時間)を格納
 
-    # 平坦化する
-    freq_peaks = freq_peaks.ravel()
-    freq_index = freq_index.ravel()
-    time_index = time_index.ravel()
+  # 平坦化する
+  freq_peaks = freq_peaks.ravel()
+  freq_index = freq_index.ravel()
+  time_index = time_index.ravel()
 
-    # ピークの大きい順（降順）にソートする
-    freq_peaks_sort = np.sort(freq_peaks)[::-1]
-    freq_index_sort = freq_index[np.argsort(freq_peaks)[::-1]]
-    time_index_sort = time_index[np.argsort(freq_peaks)[::-1]]
-
-
-
-    return freq_index_sort[:max_peaks], freq_peaks_sort[:max_peaks], time_index_sort[:max_peaks]
+  # ピークの大きい順（降順）にソートする
+  freq_peaks_sort = np.sort(freq_peaks)[::-1]
+  freq_index_sort = freq_index[np.argsort(freq_peaks)[::-1]]
+  time_index_sort = time_index[np.argsort(freq_peaks)[::-1]]
 
 
 
-def pairling_peaks(freq_index,time_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,maxfdt=3):
+  return freq_index_sort[:max_peaks], freq_peaks_sort[:max_peaks], time_index_sort[:max_peaks]
 
-  '''
-  ピークをペアにする関数
-  ------------
-  fanvalue n個先までのピークをチェックする
-  maxtdt,mintdt 時間の位置差分がnまでにあったらペアリング
-  maxfdt,mintdt 周波数のいち差分がnまでにあったらペアリング
-  -------------
-  pair_landmark f1,f2,dt,t1
-  '''
+
+
+def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,maxfdt=3):
+  
+  """ピークをペアにする関数
+
+  Parameters
+  ----------
+  time_index : _type_
+      ピークのx座標、時間軸
+  freq_index : _type_
+      ピークのy座標、周波数軸
+  fanvalue : int, optional
+      n個先までのピークをチェックする, by default 2
+  mintdt : int, optional
+      時間の位置差分がnまでにあったらペアリング, by default 0
+  maxtdt : int, optional
+      時間の位置差分がnまでにあったらペアリング, by default 2
+  minfdt : int, optional
+      周波数のいち差分がnまでにあったらペアリング, by default -3
+  maxfdt : int, optional
+      周波数のいち差分がnまでにあったらペアリング, by default 3
+
+  Returns
+  -------
+  pair_landmark 
+      f1,f2,f3,f4,dt,dtt,dttt,t1
+  """
+
 
   landmarks=[]
   ntimes=len(freq_index)
@@ -325,9 +343,9 @@ def pairling_peaks(freq_index,time_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
   
   return landmarks
 
-def peaks2hash(freq_index,time_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
+def peaks2hash(time_index,freq_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
   hash_marks={}
-  pairs=pairling_peaks(freq_index,time_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
+  pairs=pairling_peaks(time_index,freq_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
   for f1,f2,f3,f4,dt,dtt,dttt,t1 in pairs:
     info=f'{f1}{f2}{f3}{f4}{dt}{dtt}{dttt}'
     hash=hashlib.sha224(info.encode()).hexdigest()
