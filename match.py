@@ -14,18 +14,8 @@ def load_pkl(path):
     return l
 
 def match_db(audio_path,num,graph=False,scatter=False):
-    '''
-    Matching the audio to the database
-    
-    Args:
-        audio_path (str): path to the audio file
-        num (int): number of audio files to match
-        name_path (str): path to the name file
-        db_path (str): path to the database file
-    
-    '''
-
-    
+    """"""
+        
     spec,fs=modules.path2sgram(audio_path)
     x,y=modules.sgram2peaks(spec,amp_min=50,plot=False)
     audio_hash,pairs=modules.peaks2hash(x,y)
@@ -78,7 +68,7 @@ def match_db(audio_path,num,graph=False,scatter=False):
     print(f"{audio_path}==={tmp[:num]}")
 
 if __name__=="__main__":
-    match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_J04/problem1.wav",20,graph=False)
+    match_db("data/sample_Q_202205/sample_Q_202205/sample_Q_J01/problem1.wav",20,graph=False)
     
     # files=glob.glob("data\sample_Q_202205\sample_Q_202205\*\*.wav")
 

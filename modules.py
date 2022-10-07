@@ -344,6 +344,30 @@ def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
   return landmarks
 
 def peaks2hash(time_index,freq_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
+  """_summary_
+
+  Parameters
+  ----------
+  time_index : _type_
+      _description_
+  freq_index : _type_
+      _description_
+  fanvalue : int, optional
+      _description_, by default 30
+  mintdt : int, optional
+      _description_, by default -2
+  maxtdt : int, optional
+      _description_, by default 2
+  minfdt : int, optional
+      _description_, by default -3
+  maxfdt : int, optional
+      _description_, by default 3
+
+  Returns
+  -------
+  _type_
+      _description_
+  """
   hash_marks={}
   pairs=pairling_peaks(time_index,freq_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
   for f1,f2,f3,f4,dt,dtt,dttt,t1 in pairs:
@@ -491,10 +515,14 @@ def hashmatching(hash1,hash2,graph=False):
     plt.show()
     plt.close()
     plt.hist(his,density=True,bins=30)
+    plt.xlabel("time(ms)")
+    plt.ylabel("count")
     plt.savefig("./tmp/hist_正規化.png")
     plt.show()
     plt.close()
     plt.hist(forgraph,density=False,bins=30)
+    plt.xlabel("time(ms)")
+    plt.ylabel("count")
     plt.savefig("./tmp/hist2.png")
     plt.show()
     plt.close()
