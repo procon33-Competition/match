@@ -16,6 +16,8 @@ test.py : 実験用のファイル
 test.ipynb : 実験用のnotebook  
 
 # ディレクトリ構造
+
+```
 data  
   ├JKspeech-v_1_0  
     └JKspeech  
@@ -31,6 +33,7 @@ data
             └etc......  
 db  
   └list_db.pkl  
+```
 
 ### やってることメモ
 
