@@ -6,6 +6,7 @@ import time
 from collections import Counter
 from operator import itemgetter
 from typing import List, Tuple
+from wave import Wave_read
 
 import cv2
 import librosa
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pywt
+import pydub
 import scipy
 import scipy.ndimage as ndi
 import scipy.signal
@@ -39,7 +41,9 @@ def wav_read(path):
 def wav2sgram(path,n_fft=1024,win_length=1024):
   wave,fs=wav_read(path)
   sgram=librosa.feature.melspectrogram(y=wave,sr=fs,n_fft=n_fft,win_length=win_length)
-  return sgram,wave,fs
+  mellog=np.log(sgram)
+  melnor=librosa.util.normalize(sgram)
+  return melnor,wave,fs
 
 def path2sgram(path):
   sgram,wave,fs=wav2sgram(path)
@@ -190,7 +194,7 @@ def sgram2peaks(arr2D,amp_min=10,CONNECTIVITY_MASK=2,PEAK_NEIGHBORHOOD_SIZE=10,p
         # scatter of the peaks
         fig, ax = plt.subplots()
         ax.imshow(arr2D)
-        ax.scatter(times_filter, freqs_filter,c="pink",s=5)
+        ax.scatter(times_filter, freqs_filter,c="red",s=5)
         ax.set_xlabel('Time')
         ax.set_ylabel('Frequency')
         ax.set_title("Spectrogram")
@@ -275,7 +279,7 @@ def findpeaks_2d(fft_array, dt, df, num_peaks, w, max_peaks):
 
 
 
-def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,maxfdt=3):
+def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,maxfdt=3,need_diff=5):
   
   """ピークをペアにする関数
 
@@ -295,6 +299,8 @@ def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
       周波数のいち差分がnまでにあったらペアリング, by default -3
   maxfdt : int, optional
       周波数のいち差分がnまでにあったらペアリング, by default 3
+  need_diff : int optional
+      この範囲内のピークとはペアにしない
 
   Returns
   -------
@@ -316,19 +322,22 @@ def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
       t2,f2=time_index[tmp],freq_index[tmp]
       dt=t2-t1
       df=f2-f1
-      if not mintdt<=dt and dt<=maxtdt and minfdt<=df and df<=maxfdt:
+      if not mintdt<=dt and dt<=maxtdt and minfdt<=df and df<=maxfdt and need_diff<dt and need_diff<dt:
         continue
 
+      """
       for m in range(fanvalue):
-        tmp=i+m
+        tmp=j+m
         if tmp>=ntimes:
           break
         #print(tmp)
         t3,f3=time_index[tmp],freq_index[tmp]
         dtt=t3-t2
         dff=f3-f2
-        if not mintdt<=dtt and dtt<=maxtdt and minfdt<=dff and dff<=maxfdt:
+        #print(f"hogeeeee{tmp}")
+        if not mintdt<=dtt and dtt<=maxtdt and minfdt<=dff and dff<=maxfdt and need_diff<dt and need_diff<dt:
           continue
+        
         for p in range(fanvalue):
           tmp=i+p+m
           if tmp>=ntimes:
@@ -337,13 +346,15 @@ def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
           t4,f4=time_index[tmp],freq_index[tmp]
           dttt=t4-t3
           dfff=f4-f3
-          if not mintdt<=dttt and dttt<=maxtdt and minfdt<=dfff and dfff<=maxfdt:
+          if not mintdt<=dttt and dttt<=maxtdt and minfdt<=dfff and dfff<=maxfdt and need_diff<dt and need_diff<dt:
             continue
-          landmarks.append([round(f1,1),round(f2,1),round(f3,1),round(f4,1),round(dt,1),round(dtt,1),round(dttt,1),round(t1,1)])
+      """
+          
+      landmarks.append([round(f1,1),round(f2,1),round(dt,1),round(t1,1)])
   
   return landmarks
 
-def peaks2hash(time_index,freq_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,maxfdt=3):
+def peaks2hash(time_index,freq_index,fanvalue=200,mintdt=-200,maxtdt=200,minfdt=-200,maxfdt=200):
   """_summary_
 
   Parameters
@@ -370,8 +381,8 @@ def peaks2hash(time_index,freq_index,fanvalue=30,mintdt=-2,maxtdt=2,minfdt=-3,ma
   """
   hash_marks={}
   pairs=pairling_peaks(time_index,freq_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
-  for f1,f2,f3,f4,dt,dtt,dttt,t1 in pairs:
-    info=f'{f1}{f2}{f3}{f4}{dt}{dtt}{dttt}'
+  for f1,f2,dt,t1 in pairs:
+    info=f'{f1}{f2}{dt}'
     hash=hashlib.sha224(info.encode()).hexdigest()
     hash_marks[hash]=t1
   return hash_marks,pairs
@@ -654,3 +665,17 @@ def path2mfcc(path,n_mfcc=10,dct_type=3,hop_length=1024,window='hann',f_min=libr
   #                             )
   mfcc=librosa.feature.mfcc(y=y,sr=fs,n_mfcc=n_mfcc,dct_type=dct_type,)
   return mfcc
+
+def path2pcen(path):
+  wav,fs=wav_read(path)
+  s=librosa.feature.melspectrogram(y=wav,sr=fs,power=1)
+  #log_s=librosa.amplitude_to_db(s+1e-6,ref=np.max)
+  pcen=librosa.pcen(s,sr=fs)
+  pcen=librosa.amplitude_to_db(pcen,ref=0)
+  return pcen,fs
+
+def audio_mixing(path1,path2,diff_ms,format=".wav"):
+  sound1=pydub.AudioSegment.from_file(path1,format=format)
+  sound2=pydub.AudioSegment.from_file(path1,format=format)
+  result_sound=sound1.overlay(sound2,diff_ms)
+  return result_sound

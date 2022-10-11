@@ -62,4 +62,4 @@ def save_all_fig(dir_path):
 
 
 if __name__=="__main__":
-    save_all_fig("./data/JKspeech-v_1_0/JKspeech")
+    save_all_fig("./data/sample_Q_202205/sample_Q_202205/sample_Q_E04")
