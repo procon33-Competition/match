@@ -4,6 +4,7 @@
 /db/*
 
 txt.txt
+get_wav.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

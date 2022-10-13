@@ -8,6 +8,7 @@ from operator import itemgetter
 from typing import List, Tuple
 from wave import Wave_read
 
+import wave
 import cv2
 import librosa
 import librosa.display
@@ -33,20 +34,21 @@ from scipy.ndimage.morphology import (binary_erosion,
 from scipy.signal.windows.windows import nuttall
 
 
+
 def wav_read(path):
   wave,fs=sf.read(path)
   return wave,fs
 
 
-def wav2sgram(path,n_fft=1024,win_length=1024):
-  wave,fs=wav_read(path)
-  sgram=librosa.feature.melspectrogram(y=wave,sr=fs,n_fft=n_fft,win_length=win_length)
-  mellog=np.log(sgram)
-  melnor=librosa.util.normalize(sgram)
-  return melnor,wave,fs
+def wav2sgram(audio,fs,n_fft=1024,win_length=1024):
+  sgram=librosa.feature.melspectrogram(y=audio,sr=fs,n_fft=n_fft,win_length=win_length)
+  #mellog=np.log(sgram)
+  #melnor=librosa.util.normalize(sgram)
+  return sgram,audio,fs
 
 def path2sgram(path):
-  sgram,wave,fs=wav2sgram(path)
+  wave,fs=wav_read(path)
+  sgram,wave,fs=wav2sgram(wave,fs)
   spec_db=librosa.power_to_db(sgram,ref=0)
 
   # 振幅に変換
@@ -124,6 +126,24 @@ def fft_ave(data_array, samplerate, Fs, N_ave, acf):
 
 # ピーク検出関数
 def detect_peaks(image, filter_size=3, order=0.3):
+    """2次元配列データのピーク検出
+
+    Parameters
+    ----------
+    image : 2D numpy array
+        入力データ
+    filter_size : int, optional
+        ピーク検出の解像度
+        値が大きいほど荒くピークを探索, by default 3
+    order : float, optional
+        ピーク検出の閾値
+        最大ピーク値のorder倍以下のピークを排除, by default 0.3
+
+    Returns
+    -------
+    _type_
+        ピークが格納されている要素のインデックス
+    """
     local_max = maximum_filter(image, footprint=np.ones((filter_size, filter_size)), mode='constant')
     detected_peaks = np.ma.array(image, mask=~(image == local_max))
 
@@ -354,6 +374,7 @@ def pairling_peaks(time_index,freq_index,fanvalue=2,mintdt=0,maxtdt=2,minfdt=-3,
   
   return landmarks
 
+import binascii
 def peaks2hash(time_index,freq_index,fanvalue=200,mintdt=-200,maxtdt=200,minfdt=-200,maxfdt=200):
   """_summary_
 
@@ -382,8 +403,12 @@ def peaks2hash(time_index,freq_index,fanvalue=200,mintdt=-200,maxtdt=200,minfdt=
   hash_marks={}
   pairs=pairling_peaks(time_index,freq_index,fanvalue,mintdt,maxtdt,minfdt,maxfdt)
   for f1,f2,dt,t1 in pairs:
-    info=f'{f1}{f2}{dt}'
-    hash=hashlib.sha224(info.encode()).hexdigest()
+    info=f"{f1}{f2}{dt}"
+    info=info.encode("UTF-8")
+    hash=hashlib.sha3_512(info)
+    # hash=hash.hexdigest()
+    # print(f"hash memory is {hash.__sizeof__()}") #105
+    hash=str(binascii.hexlify(hash.digest()),"UTF-8")
     hash_marks[hash]=t1
   return hash_marks,pairs
 
@@ -674,8 +699,45 @@ def path2pcen(path):
   pcen=librosa.amplitude_to_db(pcen,ref=0)
   return pcen,fs
 
-def audio_mixing(path1,path2,diff_ms,format=".wav"):
-  sound1=pydub.AudioSegment.from_file(path1,format=format)
-  sound2=pydub.AudioSegment.from_file(path1,format=format)
+def path2audiomixing(path1,path2,diff_ms):
+  sound1=pydub.AudioSegment.from_wav(path1)
+  sound2=pydub.AudioSegment.from_wav(path2)
   result_sound=sound1.overlay(sound2,diff_ms)
   return result_sound
+def wavpath2audiomixing(wav1,path2,diff_ms):
+  sound2=pydub.AudioSegment.from_wav(path2)
+  result_sound=wav1.overlay(sound2,diff_ms)
+  return result_sound
+
+def audiosegment2librosawav(audiosegment):
+  channel_sounds=audiosegment.split_to_mono()
+  samples=[s.get_array_of_samples() for s in channel_sounds]
+  
+  fp_arr=np.array(samples).T.astype(np.float32)
+  fp_arr/=np.iinfo(samples[0].typecode).max
+  fp_arr=fp_arr.reshape(-1)
+  return fp_arr
+
+def concatenate_audio_wave(audio_clip_paths, output_path):
+    """複数の音声ファイルをPythonの組み込みwavモジュールで1つの音声ファイルに連結しして、`output_path`に保存します。
+       拡張子 (wav) は `output_path` に追加する必要があることに注意してください
+
+    Parameters
+    ----------
+    audio_clip_paths : _type_
+        dir_path
+    output_path : _type_
+        /*/{name}.wav
+    """
+    data = []
+    for clip in audio_clip_paths:
+        w = wave.open(clip, "rb")
+        data.append([w.getparams(), w.readframes(w.getnframes())])
+        w.close()
+    output = wave.open(output_path, "wb")
+    output.setparams(data[0][0])
+    for i in range(len(data)):
+        output.writeframes(data[i][1])
+    output.close()
+  
+  
