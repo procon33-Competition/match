@@ -2,6 +2,7 @@
 
 # 操作(9/30現在)
 
+requiments.txt入れる
 公式サイトからデータを持ってきて回答して/dataに配置する  
 make_problem_db.pyを動かす  
 match.pyのmatch_dbの引数にwavファイルのパスと読まれてる数を入れる
