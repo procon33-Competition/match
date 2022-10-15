@@ -13,6 +13,7 @@ import cv2
 import librosa
 import librosa.display
 import matplotlib
+import os
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import numpy as np
@@ -577,7 +578,8 @@ def hashmatching(hash1,hash2,graph=False):
   n_ave=n_sum/len(n)
   n_=n-n_ave
 
-  return float(first-(n_[-1]-n_ave)),n[-1]/first
+  #return float(first-(n_[-1]-n_ave)),n[-1]/first
+  return float(first-n_ave),n[-1]/first
 
 def img2peaks(path,min_distance=2):
   '''
@@ -731,7 +733,8 @@ def concatenate_audio_wave(audio_clip_paths, output_path):
     """
     data = []
     for clip in audio_clip_paths:
-        w = wave.open(clip, "rb")
+        w = wave.open(clip, "rb"
+                      )
         data.append([w.getparams(), w.readframes(w.getnframes())])
         w.close()
     output = wave.open(output_path, "wb")
@@ -740,4 +743,67 @@ def concatenate_audio_wave(audio_clip_paths, output_path):
         output.writeframes(data[i][1])
     output.close()
   
-  
+def antiphase(problem_path,audio_dir_path):
+
+  t1=time.time()
+
+  dirpath=glob.glob(os.path.join(audio_dir_path,"*.wav"))
+
+  for path in dirpath:
+
+    problem_dub=pydub.AudioSegment.from_mp3(problem_path)
+    
+    problem_fs=problem_dub.frame_rate
+    problem_time=problem_dub.duration_seconds
+    problem_len=len(problem_dub)
+    
+    hoge_dub=pydub.AudioSegment.from_mp3(path)
+    hoge_fs=hoge_dub.frame_rate
+    hoge_time=hoge_dub.duration_seconds
+    hoge_len=len(hoge_dub)
+    inv_hoge_dub = hoge_dub.invert_phase()
+
+    times = np.arange(0, (hoge_time+problem_time)*1000, 100)
+    
+    for t in times:
+      # print(f"t is {t} hoge is {hoge_len}")
+      t_diff=t-problem_len
+      # print(f"t_diff is {t_diff}")
+      if t<problem_len:
+        hoge_dub_=hoge_dub[:t]
+        inv_hoge_dub_=inv_hoge_dub[:t]
+        # print("1")
+      elif t>hoge_len:
+        hoge_dub_=hoge_dub[t_diff:]
+        inv_hoge_dub_=inv_hoge_dub[t_diff:]
+        # print("2")
+      else:
+        hoge_dub_=hoge_dub[t_diff:t]
+        inv_hoge_dub_=inv_hoge_dub[t_diff:t]
+        # print("3")
+      
+      # print(f"hoge_len{len(hoge_dub_)}")
+      # print(f"problem{len(problem_dub)}")
+    
+      inv_hoge_rosa=modules.audiosegment2librosawav(inv_hoge_dub_)
+      problem_rosa=modules.audiosegment2librosawav(problem_dub)
+      sgram,wave,fs=modules.wav2sgram(problem_rosa,problem_fs)
+      spec_db=librosa.power_to_db(sgram,ref=0)
+      sgram = np.abs(spec_db)
+      rms_origin=librosa.feature.rms(sgram)
+      rms_origin=np.sum(rms_origin)
+
+      problem_proceed_dub=problem_dub.overlay(inv_hoge_dub_)
+      problem_proceed_rosa=modules.audiosegment2librosawav(problem_proceed_dub)
+      sgram,wave,fs=modules.wav2sgram(problem_proceed_rosa,problem_fs)
+      spec_db=librosa.power_to_db(sgram,ref=0)
+      sgram = np.abs(spec_db)
+      rms=librosa.feature.rms(sgram)
+      rms_proceed=np.sum(rms)
+
+      rms_diff=rms_origin-rms_proceed
+      if(rms_diff>0.01):
+        print(f"減ったのは{path}  {t} {(rms_diff)}")
+  t2=time.time()
+  h=t2-t1
+  print(round(h,3))
