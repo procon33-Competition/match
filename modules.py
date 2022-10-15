@@ -754,6 +754,8 @@ def antiphase(problem_path,audio_dir_path):
 
   t1=time.time()
 
+  hoge=dict()
+
   dirpath=glob.glob(os.path.join(audio_dir_path,"*.wav"))
 
   problem_dub=pydub.AudioSegment.from_mp3(problem_path)
@@ -839,9 +841,14 @@ def antiphase(problem_path,audio_dir_path):
       rms_proceed_sum=np.sum(rms_proceed)
 
       rms_diff=rms_origin_sum-rms_proceed_sum
+
+      hoge[f"{path},{t}"]=f"{rms_diff}"
+
       if(rms_diff>0.1):
         print(f"減ったのは{path}  {t} {(rms_diff)}")
         # break
+  hoge = sorted(hoge.items(), key=lambda x:x[1])
+  print(hoge[0:10])
   t2=time.time()
   h=t2-t1
   print(round(h,3))
