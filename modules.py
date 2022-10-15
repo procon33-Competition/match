@@ -770,7 +770,8 @@ def antiphase(problem_path,audio_dir_path):
     problem_fs=problem_dub.frame_rate
     problem_time=problem_dub.duration_seconds
     problem_len=len(problem_dub)
-    print(f"problem?len is {problem_len},dub={problem_dub},tmp=={tmp}")
+
+  print(f"problem?len is {problem_len},dub={problem_dub},tmp=={tmp}")
   
   """
   tmp=np.arange(0,1000,100)
