@@ -794,7 +794,7 @@ def antiphase(problem_path,audio_dir_path):
     inv_hoge_dub = hoge_dub.invert_phase()
 
     
-    times = np.arange(-problem_len, (hoge_time+problem_time)*1000, 100)
+    times = np.arange(-problem_len, (hoge_time)*1000, 100)
     for t in times:
       # print(f"t is {t} hoge is {hoge_len}")
       t_diff=t-problem_len
