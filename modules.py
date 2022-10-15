@@ -801,14 +801,20 @@ def antiphase(problem_path,audio_dir_path):
       # print(f"t_diff is {t_diff}")
       if t<0:
         hoge_dub_=hoge_dub[:t+problem_len]
+        if len(hoge_dub_)<1000:
+          continue
         inv_hoge_dub_=inv_hoge_dub[:t+problem_len]
         # print("1")
       elif t+problem_len>hoge_len:
         hoge_dub_=hoge_dub[t:]
+        if len(hoge_dub_)<1000:
+          continue
         inv_hoge_dub_=inv_hoge_dub[t:]
         # print("2")
       else:
         hoge_dub_=hoge_dub[t:t+problem_len]
+        if len(hoge_dub_)<1000:
+          continue
         inv_hoge_dub_=inv_hoge_dub[t:t+problem_len]
       #   print("3")
       
