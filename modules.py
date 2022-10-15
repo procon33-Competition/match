@@ -8,6 +8,8 @@ from operator import itemgetter
 from typing import List, Tuple
 from wave import Wave_read
 
+from sklearn.linear_model import LinearRegression
+
 from numba import jit
 from numba import prange
 import numba
@@ -495,7 +497,6 @@ def path2hash(path,graph=False):
 
   return hashmarks
 
-@jit(cache=True)
 def hashmatching(hash1,hash2,graph=False):
   """
   Hash matching
@@ -539,7 +540,6 @@ def hashmatching(hash1,hash2,graph=False):
 
   if graph==True and i>0:
     print("hogeghoegh")
-    from sklearn.linear_model import LinearRegression
     plt.scatter(ts1,ts2,c="red",s=5)
 
     mod=LinearRegression()
@@ -765,7 +765,11 @@ def antiphase(problem_path,audio_dir_path):
   tmp=problem_len/100
   if tmp.is_integer()==False:
     tmp,_=math.modf(tmp)
-    problem_dub=problem_dub[:-(tmp*100)]
+    print(tmp)
+    problem_dub=problem_dub[:-tmp*100]
+    problem_fs=problem_dub.frame_rate
+    problem_time=problem_dub.duration_seconds
+    problem_len=len(problem_dub)
     print(f"problem?len is {problem_len},dub={problem_dub},tmp=={tmp}")
   
   """
@@ -790,23 +794,23 @@ def antiphase(problem_path,audio_dir_path):
     inv_hoge_dub = hoge_dub.invert_phase()
 
     
-    times = np.arange(0, (hoge_time+problem_time)*1000, 100)
+    times = np.arange(-problem_len, (hoge_time+problem_time)*1000, 100)
     for t in times:
       # print(f"t is {t} hoge is {hoge_len}")
       t_diff=t-problem_len
       # print(f"t_diff is {t_diff}")
-      if t<problem_len:
-        hoge_dub_=hoge_dub[:t]
-        inv_hoge_dub_=inv_hoge_dub[:t]
+      if t<0:
+        hoge_dub_=hoge_dub[:t+problem_len]
+        inv_hoge_dub_=inv_hoge_dub[:t+problem_len]
         # print("1")
-      elif t>hoge_len:
-        hoge_dub_=hoge_dub[t_diff:]
-        inv_hoge_dub_=inv_hoge_dub[t_diff:]
+      elif t+problem_len>hoge_len:
+        hoge_dub_=hoge_dub[t:]
+        inv_hoge_dub_=inv_hoge_dub[t:]
         # print("2")
       else:
-        hoge_dub_=hoge_dub[t_diff:t]
-        inv_hoge_dub_=inv_hoge_dub[t_diff:t]
-        # print("3")
+        hoge_dub_=hoge_dub[t:t+problem_len]
+        inv_hoge_dub_=inv_hoge_dub[t:t+problem_len]
+      #   print("3")
       
       # print(f"hoge_len{len(hoge_dub_)}")
       # print(f"problem{len(problem_dub)}")
@@ -830,7 +834,7 @@ def antiphase(problem_path,audio_dir_path):
       rms_diff=rms_origin_sum-rms_proceed_sum
       if(rms_diff>0.1):
         print(f"減ったのは{path}  {t} {(rms_diff)}")
-        break
+        # break
   t2=time.time()
   h=t2-t1
   print(round(h,3))
