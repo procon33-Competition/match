@@ -807,3 +807,16 @@ def antiphase(problem_path,audio_dir_path):
   t2=time.time()
   h=t2-t1
   print(round(h,3))
+
+def concat_dub(path1,path2,outputpath):
+  #outputpathには拡張子まで含める
+
+  # 曲1の読み込み
+  af1 = AudioSegment.from_mp3(path1)
+
+  # 曲2の読み込み
+  af2 = AudioSegment.from_mp3(path2)
+
+  # 2つの曲を連結する
+  af = af1 + af2
+  af.export(outputpath, format="wav")
