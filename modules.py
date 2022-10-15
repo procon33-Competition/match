@@ -8,6 +8,10 @@ from operator import itemgetter
 from typing import List, Tuple
 from wave import Wave_read
 
+from numba import jit
+from numba import prange
+import numba
+
 import wave
 import cv2
 import librosa
@@ -491,7 +495,7 @@ def path2hash(path,graph=False):
 
   return hashmarks
 
-
+@jit(cache=True)
 def hashmatching(hash1,hash2,graph=False):
   """
   Hash matching
@@ -706,6 +710,8 @@ def path2audiomixing(path1,path2,diff_ms):
   sound2=pydub.AudioSegment.from_wav(path2)
   result_sound=sound1.overlay(sound2,diff_ms)
   return result_sound
+
+
 def wavpath2audiomixing(wav1,path2,diff_ms):
   sound2=pydub.AudioSegment.from_wav(path2)
   result_sound=wav1.overlay(sound2,diff_ms)
@@ -743,28 +749,48 @@ def concatenate_audio_wave(audio_clip_paths, output_path):
         output.writeframes(data[i][1])
     output.close()
   
+@jit(cache=True,fastmath=True)
 def antiphase(problem_path,audio_dir_path):
 
   t1=time.time()
 
   dirpath=glob.glob(os.path.join(audio_dir_path,"*.wav"))
 
+  problem_dub=pydub.AudioSegment.from_mp3(problem_path)
+  
+  problem_fs=problem_dub.frame_rate
+  problem_time=problem_dub.duration_seconds
+  problem_len=len(problem_dub)
+  print(f"sss=={problem_len}")
+  tmp=problem_len/100
+  if tmp.is_integer()==False:
+    tmp,_=math.modf(tmp)
+    problem_dub=problem_dub[:-(tmp*100)]
+    print(f"problem?len is {problem_len},dub={problem_dub},tmp=={tmp}")
+  
+  """
+  tmp=np.arange(0,1000,100)
+  for tttmp in tmp:
+
+    problem_dub=problem_dub[:tttmp]
+
+    for ttttmp in tmp:
+      problem_dub=problem_dub[tttmp:]
+      problem_fs=problem_dub.frame_rate
+      problem_time=problem_dub.duration_seconds
+      problem_len=len(problem_dub)
+      """
+
   for path in dirpath:
 
-    problem_dub=pydub.AudioSegment.from_mp3(problem_path)
-    
-    problem_fs=problem_dub.frame_rate
-    problem_time=problem_dub.duration_seconds
-    problem_len=len(problem_dub)
-    
     hoge_dub=pydub.AudioSegment.from_mp3(path)
     hoge_fs=hoge_dub.frame_rate
     hoge_time=hoge_dub.duration_seconds
     hoge_len=len(hoge_dub)
     inv_hoge_dub = hoge_dub.invert_phase()
 
-    times = np.arange(0, (hoge_time+problem_time)*1000, 100)
     
+    times = np.arange(0, (hoge_time+problem_time)*1000, 100)
     for t in times:
       # print(f"t is {t} hoge is {hoge_len}")
       t_diff=t-problem_len
@@ -785,25 +811,26 @@ def antiphase(problem_path,audio_dir_path):
       # print(f"hoge_len{len(hoge_dub_)}")
       # print(f"problem{len(problem_dub)}")
     
-      inv_hoge_rosa=modules.audiosegment2librosawav(inv_hoge_dub_)
-      problem_rosa=modules.audiosegment2librosawav(problem_dub)
-      sgram,wave,fs=modules.wav2sgram(problem_rosa,problem_fs)
+      inv_hoge_rosa=audiosegment2librosawav(inv_hoge_dub_)
+      problem_rosa=audiosegment2librosawav(problem_dub)
+      sgram,wave,fs=wav2sgram(problem_rosa,problem_fs)
       spec_db=librosa.power_to_db(sgram,ref=0)
       sgram = np.abs(spec_db)
       rms_origin=librosa.feature.rms(sgram)
-      rms_origin=np.sum(rms_origin)
+      rms_origin_sum=np.sum(rms_origin)
 
       problem_proceed_dub=problem_dub.overlay(inv_hoge_dub_)
-      problem_proceed_rosa=modules.audiosegment2librosawav(problem_proceed_dub)
-      sgram,wave,fs=modules.wav2sgram(problem_proceed_rosa,problem_fs)
+      problem_proceed_rosa=audiosegment2librosawav(problem_proceed_dub)
+      sgram,wave,fs=wav2sgram(problem_proceed_rosa,problem_fs)
       spec_db=librosa.power_to_db(sgram,ref=0)
       sgram = np.abs(spec_db)
-      rms=librosa.feature.rms(sgram)
-      rms_proceed=np.sum(rms)
+      rms_proceed=librosa.feature.rms(sgram)
+      rms_proceed_sum=np.sum(rms_proceed)
 
-      rms_diff=rms_origin-rms_proceed
-      if(rms_diff>0.01):
+      rms_diff=rms_origin_sum-rms_proceed_sum
+      if(rms_diff>0.1):
         print(f"減ったのは{path}  {t} {(rms_diff)}")
+        break
   t2=time.time()
   h=t2-t1
   print(round(h,3))
@@ -812,10 +839,10 @@ def concat_dub(path1,path2,outputpath):
   #outputpathには拡張子まで含める
 
   # 曲1の読み込み
-  af1 = AudioSegment.from_mp3(path1)
+  af1 = pydub.AudioSegment.from_mp3(path1)
 
   # 曲2の読み込み
-  af2 = AudioSegment.from_mp3(path2)
+  af2 = pydub.AudioSegment.from_mp3(path2)
 
   # 2つの曲を連結する
   af = af1 + af2
